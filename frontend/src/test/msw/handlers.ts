@@ -53,4 +53,8 @@ export const handlers = [
   http.post('http://localhost:8080/api/v1/auth/logout', () => {
     return new HttpResponse(null, { status: 204 });
   }),
+
+  http.post('http://localhost:8080/api/v1/auth/forgot-password', () => {
+    return new HttpResponse(null, { status: 200 });
+  }),
 ];
