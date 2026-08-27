@@ -1,0 +1,93 @@
+# ===========================
+# Java / Maven
+# ===========================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ===========================
+# Spring Boot
+# ===========================
+*.log
+application-local.yml
+application-secrets.yml
+
+# ===========================
+# Node / npm / Frontend
+# ===========================
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+coverage/
+cypress/videos/
+cypress/screenshots/
+.nyc_output/
+
+# ===========================
+# Environment & Secrets
+# ===========================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+*.jks
+secrets/
+
+# ===========================
+# IDEs
+# ===========================
+.idea/
+*.iml
+*.iws
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+.vscode/
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# ===========================
+# Docker
+# ===========================
+docker-compose.override.yml
+
+# ===========================
+# OS
+# ===========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===========================
+# Test & Coverage Reports
+# ===========================
+htmlcov/
+.tox/
+.nox/
+.cache/
+.pytest_cache/
+*.cover
+*.py,cover
+.hypothesis/
