@@ -1,0 +1,50 @@
+# ─── Test Profile ─────────────────────────────────────────────────
+# Used by Testcontainers integration tests
+# Datasource URL is overridden dynamically by Testcontainers
+# ─────────────────────────────────────────────────────────────────
+
+spring:
+  # ─── DataSource — overridden by Testcontainers ───────────────
+  datasource:
+    url: jdbc:tc:postgresql:16-alpine:///maze_runner_test
+    username: maze_test_user
+    password: maze_test_password
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    hikari:
+      pool-name: MazeRunnerHikariPool-Test
+      maximum-pool-size: 5
+
+  # ─── Flyway (test) ───────────────────────────────────────────
+  flyway:
+    enabled: true
+    clean-on-validation-error: true    # Allow clean runs in test
+
+  # ─── JPA ─────────────────────────────────────────────────────
+  jpa:
+    show-sql: false
+
+  # ─── Mail → suppress in test ─────────────────────────────────
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+# ─── JWT (test values) ────────────────────────────────────────────
+app:
+  jwt:
+    secret: test_jwt_secret_for_testing_only_not_for_production_use_256bits_long
+    access-token-expiry-ms: 3600000   # 1 hour for tests
+    refresh-token-expiry-days: 1
+
+# ─── Logging (test: minimal) ─────────────────────────────────────
+logging:
+  level:
+    root: WARN
+    com.mazerunner: INFO
+    org.testcontainers: INFO
+    org.flywaydb: WARN

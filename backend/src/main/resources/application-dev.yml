@@ -1,0 +1,48 @@
+# ─── Development Profile ─────────────────────────────────────────
+# Overrides base application.yml for local development
+# ─────────────────────────────────────────────────────────────────
+
+spring:
+  # ─── DataSource ──────────────────────────────────────────────
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:maze_runner}
+    username: ${POSTGRES_USER:maze_user}
+    password: ${POSTGRES_PASSWORD:maze_password_dev}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: MazeRunnerHikariPool
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-test-query: SELECT 1
+
+  # ─── JPA (dev: show SQL) ─────────────────────────────────────
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        generate_statistics: false
+
+  # ─── Mail → MailHog in dev ───────────────────────────────────
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+# ─── Logging (dev: verbose) ───────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.mazerunner: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+    org.flywaydb: DEBUG
