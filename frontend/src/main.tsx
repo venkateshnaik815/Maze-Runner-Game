@@ -27,30 +27,46 @@ const queryClient = new QueryClient({
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Root element #root not found in document');
 
-createRoot(rootEl).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-      <Toaster
-        position="top-right"
-        gutter={8}
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#1e293b',
-            color: '#f8fafc',
-            border: '1px solid #334155',
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem',
-          },
-          success: {
-            iconTheme: { primary: '#22c55e', secondary: '#f8fafc' },
-          },
-          error: {
-            iconTheme: { primary: '#ef4444', secondary: '#f8fafc' },
-          },
-        }}
-      />
-    </QueryClientProvider>
-  </StrictMode>
-);
+async function enableMocking() {
+  // For the sake of this demo, we will always enable MSW in development
+  if (process.env.NODE_ENV !== 'development') {
+    return;
+  }
+  
+  const { worker } = await import('./test/msw/browser');
+  // `worker.start()` returns a Promise that resolves
+  // once the Service Worker is up and ready to intercept requests.
+  return worker.start({
+    onUnhandledRequest: 'bypass', // Don't warn on unhandled requests (like static assets)
+  });
+}
+
+enableMocking().then(() => {
+  createRoot(rootEl).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+        <Toaster
+          position="top-right"
+          gutter={8}
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#1e293b',
+              color: '#f8fafc',
+              border: '1px solid #334155',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+            },
+            success: {
+              iconTheme: { primary: '#22c55e', secondary: '#f8fafc' },
+            },
+            error: {
+              iconTheme: { primary: '#ef4444', secondary: '#f8fafc' },
+            },
+          }}
+        />
+      </QueryClientProvider>
+    </StrictMode>
+  );
+});
