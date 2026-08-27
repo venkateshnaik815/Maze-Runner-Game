@@ -2,6 +2,7 @@
   "name": "maze-runner-frontend",
   "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -59,5 +60,10 @@
     "jsdom": "^25.0.1",
     "msw": "^2.4.9",
     "cypress": "^13.14.2"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }
