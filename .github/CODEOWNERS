@@ -1,0 +1,34 @@
+# CODEOWNERS — Maze Runner Game Platform
+# Each line is a file pattern followed by one or more owners.
+# Owners are automatically requested for review when someone opens a PR
+# that modifies files matching the pattern.
+#
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# ─── Global default owner ───────────────────────────────────
+*                           @venkateshnaik815
+
+# ─── Backend ───────────────────────────────────────────────
+/backend/                   @venkateshnaik815
+/backend/src/main/java/     @venkateshnaik815
+/backend/src/test/          @venkateshnaik815
+/backend/pom.xml            @venkateshnaik815
+
+# ─── Security-sensitive ────────────────────────────────────
+/backend/src/main/java/com/mazerunner/config/SecurityConfig.java  @venkateshnaik815
+/backend/src/main/java/com/mazerunner/infrastructure/security/    @venkateshnaik815
+/backend/src/main/resources/application-prod.yml                  @venkateshnaik815
+
+# ─── Frontend ──────────────────────────────────────────────
+/frontend/                  @venkateshnaik815
+/frontend/src/              @venkateshnaik815
+
+# ─── Infrastructure / CI/CD ────────────────────────────────
+/.github/workflows/         @venkateshnaik815
+/k8s/                       @venkateshnaik815
+/docker-compose.yml         @venkateshnaik815
+Dockerfile                  @venkateshnaik815
+
+# ─── Documentation ─────────────────────────────────────────
+/docs/                      @venkateshnaik815
+README.md                   @venkateshnaik815
