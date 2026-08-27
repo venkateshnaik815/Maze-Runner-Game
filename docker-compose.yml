@@ -1,0 +1,197 @@
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────────────
+# Maze Runner Game — Local Development Docker Compose
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose logs -f        # Tail logs
+#   docker-compose down -v        # Stop + remove volumes
+# ─────────────────────────────────────────────────────────────────
+
+networks:
+  maze-runner-network:
+    driver: bridge
+    name: maze-runner-network
+
+volumes:
+  postgres-data:
+    name: maze-runner-postgres-data
+  redis-data:
+    name: maze-runner-redis-data
+  grafana-data:
+    name: maze-runner-grafana-data
+  prometheus-data:
+    name: maze-runner-prometheus-data
+
+services:
+
+  # ─── PostgreSQL 16 ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: maze-runner-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-maze_runner}
+      POSTGRES_USER: ${POSTGRES_USER:-maze_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-maze_password_dev}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/migration:/docker-entrypoint-initdb.d:ro
+    networks:
+      - maze-runner-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-maze_user} -d ${POSTGRES_DB:-maze_runner}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis 7 ────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: maze-runner-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-redis_password_dev}
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - maze-runner-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password_dev}", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Adminer (PostgreSQL GUI) ────────────────────────────────────
+  adminer:
+    image: adminer:4
+    container_name: maze-runner-adminer
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8090}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    networks:
+      - maze-runner-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── Spring Boot Backend ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: maze-runner-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-maze_runner}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-maze_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-maze_password_dev}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password_dev}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me_in_production_must_be_256_bits_long}
+      JWT_ACCESS_TOKEN_EXPIRY_MS: ${JWT_ACCESS_TOKEN_EXPIRY_MS:-900000}
+      JWT_REFRESH_TOKEN_EXPIRY_DAYS: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:-7}
+      MAIL_HOST: ${MAIL_HOST:-mailhog}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      BACKEND_CORS_ALLOWED_ORIGINS: ${BACKEND_CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - ./backend/src:/app/src:ro    # hot reload in dev
+    networks:
+      - maze-runner-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/v1/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─── React Frontend ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: maze-runner-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8080/ws}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend/src:/app/src:ro  # hot reload in dev
+    networks:
+      - maze-runner-network
+    depends_on:
+      - backend
+
+  # ─── MailHog (Local Email Testing) ───────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: maze-runner-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - maze-runner-network
+
+  # ─── Prometheus ──────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: maze-runner-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - maze-runner-network
+
+  # ─── Grafana ─────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: maze-runner-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin_dev}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - maze-runner-network
+    depends_on:
+      - prometheus

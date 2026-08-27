@@ -1,0 +1,98 @@
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────────────
+# Maze Runner Game — Test Environment Docker Compose
+# Used by GitHub Actions CI and local test runs
+# Usage:
+#   docker-compose -f docker-compose.test.yml up -d
+#   npm run cypress:run  (or mvn verify)
+#   docker-compose -f docker-compose.test.yml down -v
+# ─────────────────────────────────────────────────────────────────
+
+networks:
+  maze-runner-test-network:
+    driver: bridge
+
+volumes:
+  postgres-test-data:
+
+services:
+
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: maze-runner-postgres-test
+    environment:
+      POSTGRES_DB: maze_runner_test
+      POSTGRES_USER: maze_test_user
+      POSTGRES_PASSWORD: maze_test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+    networks:
+      - maze-runner-test-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U maze_test_user -d maze_runner_test" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: maze-runner-redis-test
+    ports:
+      - "6380:6379"
+    networks:
+      - maze-runner-test-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: test
+    container_name: maze-runner-backend-test
+    environment:
+      SPRING_PROFILES_ACTIVE: test
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-test:5432/maze_runner_test
+      SPRING_DATASOURCE_USERNAME: maze_test_user
+      SPRING_DATASOURCE_PASSWORD: maze_test_password
+      SPRING_DATA_REDIS_HOST: redis-test
+      SPRING_DATA_REDIS_PORT: 6379
+      JWT_SECRET: test_jwt_secret_for_testing_only_not_for_production_use
+    ports:
+      - "8081:8080"
+    networks:
+      - maze-runner-test-network
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/v1/actuator/health" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: test
+    container_name: maze-runner-frontend-test
+    environment:
+      VITE_API_BASE_URL: http://backend-test:8080
+      VITE_WS_URL: ws://backend-test:8080/ws
+    ports:
+      - "3001:3000"
+    networks:
+      - maze-runner-test-network
+    depends_on:
+      backend-test:
+        condition: service_healthy
